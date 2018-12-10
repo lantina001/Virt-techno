@@ -1,0 +1,65 @@
+IPT="/sbin/iptables"
+#Ip-adres HvA
+$IPT -I INPUT  -s 145.92.248.66/16 -j DROP
+#tegen spoofing
+if [ -e /proc/sys/net/ipv4/conf/all/ip_filter ] ;
+    then
+    for filter in /proc/sys/net/ipv4/conf/*/rp_filter
+    do
+    echo > 1 $filter
+    done
+    fi
+    echo "[Anti-spoofing kan worden gebruikt]"
+if_lan="eth0"
+addr_if_lan="8.8.8.8"
+addr_whitelist="google.com"
+net_lan="8.8.8.0/1"
+. /lib/lsb/init-functions
+
+case "$1" in
+    start|force-reload|restart)
+        $0 stop
+
+        $iptables -P INPUT DROP
+        $iptables -P FORWARD DROP
+
+        # loopback
+        $iptables -A INPUT -i lo -j ACCEPT
+
+        #doorgaan met de status
+        $iptables -A INPUT -m state --state ESTABLISHED,RELATED \
+            -j ACCEPT
+
+        # ipset voor het meten van de bruteforce aanvallen
+        $ipset -N bruteforce iphash
+
+        # Bruteforce detectie
+        $iptables -N BRUTECHECK
+        $iptables -A BRUTECHECK -m set --match-set bruteforce src -j DROP
+        $iptables -A BRUTECHECK -j ACCEPT
+
+        # SSH-connecties worden gewhitelist, er wordt geprobeerd bruteforce attacks te voorkomen
+        $iptables -N SSHSCAN
+        $iptables -N SSHREJECT
+        $iptables -A INPUT -i $if_lan -p TCP -d $addr_if_lan --dport 22 \
+            -m state --state NEW -j SSHSCAN
+        $iptables -A SSHSCAN -m set --match-set whitelist src -j ACCEPT
+        $iptables -A SSHSCAN -m recent --set --name SSH
+        $iptables -A SSHSCAN -m recent --update --hitcount 6 --seconds 600 \
+            --name SSH -j SSHREJECT
+        $iptables -A SSHSCAN -j BRUTECHECK
+        $iptables -A SSHREJECT -j SET --add-set bruteforce src
+        $iptables -A SSHREJECT -j LOG --log-level info \
+            --log-prefix "SSH bruteforce detected: "
+        $iptables -A SSHREJECT -j DROP
+
+        # Dit voorkomt voorkomt alle connecties, behalve ICMP
+        $iptables -A INPUT -j REJECT
+        ;;
+
+        $iptables -P INPUT ACCEPT
+        $iptables -P OUTPUT ACCEPT
+        $iptables -P FORWARD DROP
+        $iptables -t nat -P PREROUTING ACCEPT
+        $iptables -t nat -P POSTROUTING ACCEPT
+        $iptables -t nat -P OUTPUT ACCEPT

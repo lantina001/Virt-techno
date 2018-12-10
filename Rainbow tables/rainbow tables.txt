@@ -1,0 +1,55 @@
+import re
+from setuptools import setup, find_packages
+
+version = re.search("^__version__\s*=\s*\"(.*)\"$",
+  open("leprechaun/__init__.py").read(), re.M).group(1)
+
+setup(
+  name='leprechaun',
+  version=version,
+  description="A simple rainbow table generator",
+  long_description=open("README.rst", encoding="utf-8").read(),
+  author="Zach Dziura",
+  author_email="zcdziura@gmail.com",
+  url="https://github.com/zcdziura/leprechaun",
+  license="MIT",
+  packages=find_packages(),
+  entry_points={
+    "console_scripts": [
+      "leprechaun = leprechaun.__main__:main"
+    ]
+  },
+  classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Security",
+    "Topic :: Security :: Cryptography"
+  ]
+)
+# Create a rainbow table using the MD5 hashing algorithm.
+leprechaun /path/to/your/wordlist.txt
+
+# Create a rainbow table using the SHA-1 hashing algorithm.
+leprechaun -s /path/to/your/wordlist.txt
+
+# Create a rainbow table using the SHA-1 hashing algorithm, saving the
+# output in an SQLite database.
+leprechaun -s -d /path/to/your/wordlist.txt
+
+# Create a rainbow table using the SHA-256 hashing algorithm, hashing all of
+# the plaintext files in a given directory, saving the output in an SQLite
+# database.
+leprechaun -s2 -d -f /path/to/your/wordlists
+
+# Create a rainbow table using the SHA-256 hashing algorithm, hashing all of
+# the plaintext files in a given directory, saving the output in an SQLite
+# database named "patty"
+leprechaun -s2 -d -o patty -f /path/to/your/wordlists
+
+# Create a rainbow table using the SHA384 hashing algorithm, prepending a
+# salt to the word and iterate the hash 40 times.
+leprechaun -s3 -i 40 --prefix '1234' /path/to/your/wordlists

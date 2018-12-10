@@ -1,0 +1,72 @@
+mport bigInt = require('big-integer');
+
+import { IExchangeKey } from './exchangeKey';
+import { NumberUtils } from './utils/number';
+
+/**
+ * Represents Diffie-Hellman key exchange.
+ */
+export interface IDiffieHellman extends IExchangeKey {
+    /**
+     * Prime number.
+     */
+    prime: bigInt.BigInteger;
+
+    /**
+     * Generator.
+     */
+    generator: bigInt.BigInteger;
+    /**
+     * Public key.
+     */
+    publicKey: bigInt.BigInteger;
+}
+
+/**
+ * Represents Diffie-Hellman key exchange protocol.
+ */
+export class DiffieHellman implements IDiffieHellman {
+    protected _prime: bigInt.BigInteger;
+    protected _generator: bigInt.BigInteger;
+    protected _privateKey: bigInt.BigInteger;
+    protected _publicKey: bigInt.BigInteger;
+    protected _sharedSecretKey: bigInt.BigInteger;
+
+    public constructor(primeLength: number, generator?: bigInt.BigInteger);
+    public constructor(prime: bigInt.BigInteger, generator?: bigInt.BigInteger);
+    public constructor (primeOrLength: number | bigInt.BigInteger = 128, generator = bigInt(2)) {
+        if (bigInt.isInstance(primeOrLength))
+            this._prime = <bigInt.BigInteger> primeOrLength;
+        else
+            this._prime = NumberUtils.generatePrime(<number> primeOrLength);
+
+        this._generator = generator;
+    }
+
+    public get prime(): bigInt.BigInteger {
+        return this._prime;
+    }
+
+    public get generator(): bigInt.BigInteger {
+        return this._generator;
+    }
+
+    public get publicKey(): bigInt.BigInteger {
+        return this._publicKey;
+    }
+
+    public generatePublicKey(): bigInt.BigInteger {
+        this._privateKey = this.generatePrivateKey();
+        return this._publicKey = this._generator.pow(this._privateKey).mod(this._prime);
+    }
+
+    public computeSharedSecretKey(otherPublicKey: bigInt.BigInteger): void {
+        this._sharedSecretKey = otherPublicKey.pow(this._privateKey).mod(this._prime);
+    }
+
+    protected generatePrivateKey(): bigInt.BigInteger {
+        const two = bigInt(2);
+        // private key should be much larger
+        return bigInt.randBetween(two.pow(4), two.pow(8));
+    }
+}

@@ -1,0 +1,67 @@
+name=$1
+	fr_debian_mirror=http://ftp.debian.org/debian/dists/wheezy/main/installer-amd64/
+	ovh_debian_mirror=http://debian.mirrors.ovh.net/debian/dists/wheezy/main/installer-amd64/
+	belnet_debian_mirror=http://ftp.belnet.be/debian/dists/wheezy/main/installer-amd64/
+	mirror=$fr_debian_mirror
+	
+
+	virt-install \
+	--virt-type kvm \
+	--name=$name \
+	--disk path=/var/lib/libvirt/images/$name.qcow2,size=8,format=qcow2 \
+	--ram=512 \
+	--vcpus=1 \
+	--os-variant=debianwheezy \
+	--network bridge=virbr0 \
+	--graphics none \
+	--console pty,target_type=serial \
+	--location $mirror \
+	-x "console=ttyS0,115200n8 serial"
+#!/bin/bash
+	# vm-install1.sh
+	
+
+	# local path to the iso
+	iso=/var/lib/iso/CentOS-7-x86_64-DVD-1611.iso
+	
+
+	# Stop and undefine the VM
+	/bin/virsh destroy $1; /bin/virsh undefine $1 --remove-all-storage
+	
+
+	# graphical console
+	# via local ISO 
+	virt-install \
+	--virt-type kvm \
+	--name=$1 \
+	--disk path=/var/lib/libvirt/images/$1.img,size=8 \
+	--ram=1024 \
+	--vcpus=1 \
+	--os-variant=rhel7 \
+	--graphics vnc \
+	--console pty,target_type=serial \
+	--cdrom $iso
+# File /var/www/html/conf/vm.ks
+	
+
+	keyboard --vckeymap=be-oss --xlayouts='be (oss)'
+	lang NL_NL.UTF-8
+	network --onboot=on --bootproto=dhcp --device=link --hostname=localhost.localdomain
+	rootpw testtest
+	services --enabled="chronyd"
+	timezone Europe/Paris --isUtc
+	bootloader --location=mbr --boot-drive=vda
+	clearpart --all --initlabel --drives=vda
+	ignoredisk --only-use=vda
+	part pv.0 --fstype="lvmpv" --ondisk=vda --size=5000
+	part /boot --fstype="xfs" --ondisk=vda --size=500
+	volgroup vg0 --pesize=4096 pv.0
+	logvol swap  --fstype="swap" --size=500 --name=swap --vgname=vg0
+	logvol /  --fstype="xfs" --size=3072 --name=root --vgname=vg0
+	
+
+	%packages --ignoremissing
+	@core
+	chrony
+	%end
+	reboot
