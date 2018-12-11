@@ -1,0 +1,69 @@
+#map om iptableswijzigingen in op te slaan
+IPT="/sbin/iptables"
+sudo sh firewall.sh
+
+#laat de lijst van de huidige iptables zien
+iptables -L
+
+#tegen spoofing
+if [ -e /proc/sys/net/ipv4/conf/all/ip_filter ] ;
+    then
+    for filter in /proc/sys/net/ipv4/conf/*/rp_filter
+    do
+    echo > 1 $filter
+    done
+    fi
+    echo "[Anti-spoofing kan worden gebruikt]"
+	
+#Google.com whitelisten
+if_lan="eth0"
+addr_if_lan="8.8.8.8"
+addr_whitelist="google.com"
+net_lan="8.8.8.0 / 1"
+
+#Het toelaten van ssh-verbindingen met een maximum van 10 per minuut vanaf hetzelfde IP-adres	
+A INPUT - p tcp --dport 22 - m recent --rcheck --seconds 60 --hitcount 10 --name SSH - j LOG --log - prefix "SH "
+A INPUT - p tcp --dport 22 - m recent --update --seconds 60 --hitcount 10 --name SSH - j DROP
+A INPUT - p tcp --dport 22 - m state --state NEW - m recent --set --name SSH - j ACCEPT
+
+#SSH-connecties worden gewhitelist, er wordt geprobeerd bruteforce attacks te voorkomen
+N BRUTECHECK
+A BRUTECHECK - m set --match - set bruteforce src - j DROP
+A BRUTECHECK - j ACCEPT
+N SSHSCAN
+N SSHREJECT
+A INPUT - i $if_lan - p TCP - d $addr_if_lan --dport 22 \- m state --state NEW - j SSHSCAN
+A SSHSCAN - m set --match - set whitelist src - j ACCEPT
+A SSHSCAN - m recent --set --name SSH
+A SSHSCAN - m recent --update --hitcount 6 --seconds 600 \	--name SSH - j SSHREJECT
+A SSHSCAN - j BRUTECHECK
+A SSHREJECT - j SET --add - set bruteforce src
+A SSHREJECT - j LOG --log - level info \--log - prefix "SSH bruteforce detected: "
+A SSHREJECT - j DROP
+
+#accepteer alles van de loopback
+A INPUT - i lo - j ACCEPT
+A OUTPUT - o lo - j ACCEPT
+
+#Het toelaten staan van ICMP-pakketten
+A INPUT - i $int_if - d $int_ip - p icmp - j ACCEPT
+
+#Het blokkeren van poorten waar vanaf vaak virussen verstuurd worden
+A INPUT - i $int_if - m multiport - p tcp --dports 53, 113, 135, 137, 139, 445 - j DROP
+A INPUT - i $int_if - m multiport - p udp --dports 53, 113, 135, 137, 139, 445 - j DROP
+A INPUT - i $int_if - p udp --dport 1026 - j DROP
+A INPUT - i $int_if - m multiport - p tcp --dports 1433, 4899 - j DROP
+A INPUT - p icmp - m limit --limit 10 / second - j ACCEPT
+A INPUT - p icmp - j DROP
+A INPUT - j LOG --log - prefix "IN "
+A INPUT - j REJECT --reject - with icmp - port - unreachable
+A OUTPUT - j LOG --log - prefix "OU "
+A OUTPUT - j REJECT --reject - with icmp - port - unreachable
+A FORWARD - j LOG --log - prefix "FW "
+A FORWARD - j LOG --log - prefix "FW "
+
+#Het opslaan van de wijzigingen in de iptables
+/etc/init.d/iptables save
+
+#Iptables wordt opnieuw gestart
+/etc/init.d/iptables restart
