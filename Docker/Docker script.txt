@@ -1,0 +1,55 @@
+sudo apt-get update && sudo apt-get install -y
+sudo apt-get install -y curl nginx
+
+#docker images
+docker pull nginx/unit
+docker run -d nginx/unit
+
+#Installeer ubuntu package
+apt-key add nginx_signing.key
+
+#Bestand om de PGBsleutel te valideren
+cd /etc/apt/sources.list.d/
+touch unit.list
+#Als het besturingssysteem Ubuntu is
+if [ [ "$OSTYPE" == "ubuntu 18.04" ]; then
+deb https://packages.nginx.org/unit/ubuntu/ bionic unit
+deb-src https://packages.nginx.org/unit/ubuntu/ bionic unit
+apt-get install unit-php unit-python2.7 unit-python3.6 unit-go1.9 \
+      unit-go1.10 unit-perl unit-ruby unit-dev
+curl -sL https://deb.nodesource.com/setup_11.x | bash -; apt-get install nodejs	  
+
+#Als het besturingssysteem debian is	  
+elif [[ "$OSTYPE" == "debian 8" ]]; then
+deb https://packages.nginx.org/unit/debian/ stretch unit
+deb-src https://packages.nginx.org/unit/debian/ stretch unit
+curl -sL https://deb.nodesource.com/setup_11.x | bash -
+apt-get install unit-php unit-python2.7 unit-python3.6 unit-go1.9 \
+      unit-go1.10 unit-perl unit-ruby unit-dev
+apt-get install -y nodejs	  
+
+apt-get install unit
+systemctl enable unit.service
+
+#Node.js packages installeren
+npm install -g --unsafe-perm unit-http
+npm update -g --unsafe-perm unit-http
+
+#installeren van mercurial
+apt-get install mercurial
+hg clone https://hg.nginx.org/unit
+
+git clone https://github.com/nginx/unit
+
+#benodigde installatiepakketten
+apt-get install build-essential
+apt-get install golang
+apt-get install php-dev libphp-embed
+apt-get install libperl-dev
+apt-get install python-dev
+apt-get install ruby-dev
+apt-get install libssl-dev
+apt-cache madison docker-ce
+
+docker-ce | 18.09.0~ce-0~debian | https://download.docker.com/linux/debian jessie/stable amd64 Packages
+docker run --detach --publish 80:80 --name webserver nginx
